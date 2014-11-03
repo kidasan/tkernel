@@ -1,0 +1,226 @@
+#
+# ----------------------------------------------------------------------
+#     SMP T-Kernel
+#
+#     Copyright (C) 2007-2010 Ken Sakamura. All Rights Reserved.
+#     SMP T-Kernel is distributed under the T-License for SMP T-Kernel.
+# ----------------------------------------------------------------------
+#
+#     Version:   1.00.01
+#     Released by T-Engine Forum(http://www.t-engine.org) at 2010/02/19.
+#
+# ----------------------------------------------------------------------
+#
+
+#
+#	makerules
+#		for GNU make
+#
+#	default rules - system-dependent (SH7776)
+#
+#	MACHINE	target CPU
+#		smp_sh7776 : SH7776(SH-4A Multi)
+#
+#	TETYPE	target T-Engine type
+#		std	: Standard T-Engine
+#
+#	GNUsh	GNU development tool for SH
+#
+
+# command path
+PATH = .
+ifneq ($(filter "$(origin GNUsh)", $(TOOL_ORIGIN)), )
+  PATH := $(PATH):$(GNUsh)/bin
+endif
+ifneq ($(filter "$(origin GNUs)", $(TOOL_ORIGIN)), )
+  PATH := $(PATH):$(GNUs)/bin
+endif
+ifneq ($(filter Linux-%, $(CROSS_ARCH)), )
+  PATH := $(PATH):/usr/local/bin:/bin:/usr/bin
+endif
+
+# ----- Standard T-Engine/SH7776(SH-4A Multi) --------------------------
+
+# GCC environment
+TARGET_ARCH =
+
+# target type
+_CPUTYPE_FLAGS = -m4a-nofpu -ml
+_TE_SYSTEM_NAME_ = _STD_SMP_SH7776_
+
+### build option ###
+CFLAGS += -D__SMP__
+CPPFLAGS +=
+ASFLAGS += -D__SMP__
+LDFLAGS +=
+
+### C ###
+CC := $(GNUsh)/bin/sh-elf-gcc
+OUTPUT_OPTION = -o $@
+ifeq ($(mode), debug)
+  CFLAGS += -g
+  CPPFLAGS += $(HEADER:%=-I%) -D$(_TE_SYSTEM_NAME_)
+else
+  CFLAGS += -O2
+  CPPFLAGS += $(HEADER:%=-I%) -D$(_TE_SYSTEM_NAME_)
+endif
+
+CFLAGS += $(_CPUTYPE_FLAGS) -ffreestanding
+
+CFLAGS_WARNING	    = -Wall
+CFLAGS_WARNING_FULL = -pedantic -W -Wall
+
+COMPILE.c = $(CC) $(TARGET_ARCH) $(CFLAGS) $(CPPFLAGS) -c
+LINK.c = $(CC) $(TARGET_ARCH) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS)
+
+%.o: %.c
+	$(COMPILE.c) $< $(OUTPUT_OPTION)
+
+%.s: %.c
+	$(CC) $(TARGET_ARCH) $(CFLAGS) $(CPPFLAGS) -S $<
+
+%.i: %.c
+	$(CC) $(TARGET_ARCH) $(CFLAGS) $(CPPFLAGS) -E $< $(OUTPUT_OPTION)
+
+### C++ ###
+CXX := $(GNUsh)/bin/sh-elf-g++
+CXXFLAGS = $(CFLAGS)
+
+COMPILE.cc = $(CXX) $(TARGET_ARCH) $(CXXFLAGS) $(CPPFLAGS) -c
+LINK.cc = $(CXX) $(TARGET_ARCH) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)
+
+%.o: %.cc
+	$(COMPILE.cc) $< $(OUTPUT_OPTION)
+
+%.s: %.cc
+	$(CXX) $(TARGET_ARCH) $(CXXFLAGS) $(CPPFLAGS) -S $<
+
+%.i: %.cc
+	$(CXX) $(TARGET_ARCH) $(CXXFLAGS) $(CPPFLAGS) -E $< $(OUTPUT_OPTION)
+
+### asm ###
+AS = $(GNUsh)/bin/sh-elf-as
+ifeq ($(mode), debug)
+  ASFLAGS +=
+else
+  ASFLAGS +=
+endif
+
+ASFLAGS += $(_CPUTYPE_FLAGS)
+ASFLAGS.s = -little
+
+COMPILE.S = $(CC) $(TARGET_ARCH) $(ASFLAGS) $(CPPFLAGS) -c
+COMPILE.s = $(AS) $(ASFLAGS.s)
+
+%.o: %.S
+	$(COMPILE.S) $< $(OUTPUT_OPTION)
+
+%.o: %.s
+	$(COMPILE.s) $< $(OUTPUT_OPTION)
+
+%.i: %.S
+	$(CC) $(TARGET_ARCH) $(ASFLAGS) $(CPPFLAGS) -E $< $(OUTPUT_OPTION)
+
+### linker ###
+LD = $(GNUsh)/bin/sh-elf-ld
+ifeq ($(mode), debug)
+  LDFLAGS += $(LIBDIR:%=-L%)
+else
+  LDFLAGS += $(LIBDIR:%=-L%)
+endif
+
+LDFLAGS += $(_CPUTYPE_FLAGS)
+
+LIBDIR = $(COMMONLIB)
+LOADLIBES =
+LDOBJS =
+LDLIBS = -lgcc-Os-4-200
+
+# additional linker option
+ifneq ($(filter sl, $(options)), )
+  LDFLAGS2 = -static
+else
+  # no effect
+  LDFLAGS2 = -static
+endif
+LDFLAGS3 = -static -T $(COMMONLIB)/static.lnk
+START_ADR =
+
+# create executable
+LINK.o = $(CC) $(TARGET_ARCH) $(LDFLAGS) $(LDFLAGS2) $(START_ADR)
+
+# link objects
+LINK_R.o = $(CC) $(TARGET_ARCH) $(LDFLAGS) -r -nostdlib
+
+# link objects and libraries
+LINK_A.o = $(CC) $(TARGET_ARCH) $(LDFLAGS) -r
+
+# create executable (location only)
+LOCATE.o = $(CC) $(TARGET_ARCH) $(LDFLAGS) -nostdlib $(LDFLAGS3) $(START_ADR)
+
+%: %.o
+	$(LINK.o) $(LDOBJS) $^ $(LOADLIBES) $(LDLIBS) $(OUTPUT_OPTION)
+
+%.out: %.o
+	$(LINK.o) $(LDOBJS) $^ $(LOADLIBES) $(LDLIBS) $(OUTPUT_OPTION)
+
+%.abs: %.o
+	$(LINK_A.o) $(LDOBJS) $^ $(LOADLIBES) $(LDLIBS) -o _$@
+	$(LOCATE.o) _$@ $(OUTPUT_OPTION)
+	$(RM) _$@
+
+### library ###
+AR = $(GNUsh)/bin/sh-elf-ar
+ARFLAGS = rv
+RANLIB = $(GNUsh)/bin/sh-elf-ranlib
+
+(%): %
+	$(AR) $(ARFLAGS) $@ $%
+
+### create name list ###
+NM = $(GNUsh)/bin/sh-elf-nm
+NMFLAGS = -n
+
+%.map: %
+	$(NM) $(NMFLAGS) $< > $@
+
+%.map: %.out
+	$(NM) $(NMFLAGS) $< > $@
+
+%.map: %.abs
+	$(NM) $(NMFLAGS) $< > $@
+
+%.map: %.dll
+	$(NM) $(NMFLAGS) $< > $@
+
+### data box ###
+DBCPPFLAGS = -D$(_TE_SYSTEM_NAME_)
+DB_CPP = $(CPP) -nostdinc -traditional -P $(DATABOX_HEADER:%=-I%) $(DBCPPFLAGS)
+DB = $(ETCBIN)/databox
+DBFLAGS =
+DBSRCFLAGS = -s
+DATABOX = $(DB) $(DBFLAGS)
+
+%.dbx: %.d
+	$(DB_CPP) $< $@.tmp
+	$(DATABOX) $@.tmp $@
+	$(RM) $@.tmp
+
+%.fsn: %.f
+	$(DB_CPP) $< $@.tmp
+	$(DATABOX) -n $@.tmp $@
+	$(RM) $@.tmp
+
+%.c: %.d
+	$(DB_CPP) $< $@.tmp
+	$(DATABOX) -n $(DBSRCFLAGS) $@.tmp $@
+	$(RM) $@.tmp
+
+### other ###
+ifndef CPP
+  CPP = $(GNU_BD)/bin/sh-elf-cpp
+endif
+STRIP = $(GNUsh)/bin/sh-elf-strip --strip-unneeded
+
+OBJCOPY = $(GNU_BD)/bin/sh-elf-objcopy
+OUTPUT_SREC = -O srec --srec-forceS3 --srec-len 32

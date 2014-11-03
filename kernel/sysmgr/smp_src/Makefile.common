@@ -1,0 +1,67 @@
+#
+# ----------------------------------------------------------------------
+#     SMP T-Kernel
+#
+#     Copyright (C) 2007-2010 Ken Sakamura. All Rights Reserved.
+#     SMP T-Kernel is distributed under the T-License for SMP T-Kernel.
+# ----------------------------------------------------------------------
+#
+#     Version:   1.00.01
+#     Released by T-Engine Forum(http://www.t-engine.org) at 2010/02/19.
+#
+# ----------------------------------------------------------------------
+#
+
+#
+#	Makefile for gmake
+#	T-Kernel/System Manager (common description)
+#
+
+# source file dependencies (generated automatically)
+DEPS = Dependencies
+DEPENDENCIES_OUTPUT := $(DEPS)
+
+# ----------------------------------------------------------------------------
+
+# target object
+TARGET	= sysmgr.o
+
+S	= ../../smp_src ../../src
+
+# common source files
+SRC	+=	smmain.c system.c imalloc.c syslog.c \
+		device.c deviceio.c
+
+VPATH	+= $(S)
+HEADER	+= $(S)
+
+# additional source files (cpu-dependent)
+VPATH	+= ../../../sysdepend/cpu/$(MACHINE)
+HEADER	+= ../../../sysdepend/cpu/$(MACHINE)
+
+# additional source files (device-dependent)
+VPATH	+= ../../../sysdepend/device/$(TETYPE)_$(MACHINE)
+HEADER	+= ../../../sysdepend/device/$(TETYPE)_$(MACHINE)
+
+OBJ = $(addsuffix .o, $(basename $(SRC)))
+
+# compiler options
+CFLAGS += $(CFLAGS_WARNING)
+
+# ----------------------------------------------------------------------------
+
+.PHONY: all clean
+
+ALL = $(TARGET)
+
+all: $(ALL)
+
+$(TARGET): $(OBJ)
+	$(LINK_R.o) $^ $(OUTPUT_OPTION)
+
+clean:
+	$(RM) $(OBJ) $(ALL) $(DEPS)
+
+# generate dependencies
+$(DEPS): ; touch $(DEPS)
+include $(DEPS)

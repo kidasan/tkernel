@@ -1,0 +1,78 @@
+/*
+ *----------------------------------------------------------------------
+ *    SMP T-Kernel
+ *
+ *    Copyright (C) 2007-2010 Ken Sakamura. All Rights Reserved.
+ *    SMP T-Kernel is distributed under the T-License for SMP T-Kernel.
+ *----------------------------------------------------------------------
+ *
+ *    Version:   1.00.01
+ *    Released by T-Engine Forum(http://www.t-engine.org) at 2010/02/19.
+ *
+ *----------------------------------------------------------------------
+ */
+
+/*
+ *      kernel-rom.lnk (sysmain, NAVIENGINE)
+ *	linker script (ROM)
+ */
+
+OUTPUT_FORMAT("elf32-littlearm", "elf32-bigarm", "elf32-littlearm")
+OUTPUT_ARCH(arm)
+ENTRY(_start)
+
+SECTIONS {
+	.text 0x00040000 : {
+		KEEP (*(.init))
+		*(.text)
+		*(.text.*)
+		*(.stub)
+		KEEP (*(.fini))
+		PROVIDE (__etext = .);
+		PROVIDE (_etext = .);
+		PROVIDE (etext = .);
+		*(.rodata)
+		*(.rodata.*)
+		*(.rodata1)
+		. = ALIGN(0x10);
+	} =0
+	__data_org = . ;
+	.data 0x80010000 : AT(__data_org) {
+		__data_start = . ;
+		*(.data)
+		*(.data.*)
+		SORT(CONSTRUCTORS)
+		*(.data1)
+		KEEP (*(.eh_frame))
+		*(.gcc_except_table)
+		KEEP (*crtbegin.o(.ctors))
+		KEEP (*(EXCLUDE_FILE (*crtend.o ) .ctors))
+		KEEP (*(SORT(.ctors.*)))
+		KEEP (*(.ctors))
+		KEEP (*crtbegin.o(.dtors))
+		KEEP (*(EXCLUDE_FILE (*crtend.o ) .dtors))
+		KEEP (*(SORT(.dtors.*)))
+		KEEP (*(.dtors))
+		*(.sdata) 
+		*(.sdata.*)
+		. = ALIGN(4);
+		_edata = .;
+		PROVIDE (edata = .);
+	}
+	.bss ALIGN(4) : {
+		__bss_start = .;
+		PROVIDE (__sbss_start = .);
+		PROVIDE (___sbss_start = .);
+		*(.sbss)
+		*(.sbss.*)
+		*(.scommon)
+		PROVIDE (__sbss_end = .);
+		PROVIDE (___sbss_end = .);
+		*(.bss)
+		*(.bss.*)
+		*(COMMON)
+		. = ALIGN(4);
+		_end = .;
+		PROVIDE (end = .);
+	}
+}

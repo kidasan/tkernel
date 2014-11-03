@@ -1,0 +1,139 @@
+#
+# ----------------------------------------------------------------------
+#     SMP T-Kernel
+#
+#     Copyright (C) 2007-2010 Ken Sakamura. All Rights Reserved.
+#     SMP T-Kernel is distributed under the T-License for SMP T-Kernel.
+# ----------------------------------------------------------------------
+#
+#     Version:   1.00.01
+#     Released by T-Engine Forum(http://www.t-engine.org) at 2010/02/19.
+#
+# ----------------------------------------------------------------------
+#
+
+#
+#	Makefile for gmake
+#	sysmain (common description)
+#
+
+# source file dependencies (generated automatically)
+DEPS = Dependencies
+DEPENDENCIES_OUTPUT := $(DEPS)
+
+# ----------------------------------------------------------------------------
+
+# T-Kernel common standard library
+include ../../../tstdlib/Makefile.tstdlib
+
+# user main
+include ../../../usermain/Makefile.usermain
+
+# kernel install path
+KERNEL_INSTALLDIR	= ../../../bin/$(TETYPE)_$(MACHINE)
+
+# kernel modules path
+OBJ_TKERNEL_PATH	= ../../../tkernel/build/$(TETYPE)_$(MACHINE)
+OBJ_SYSMGR_PATH		= ../../../sysmgr/build/$(TETYPE)_$(MACHINE)
+OBJ_SYSINIT_PATH	= ../../../sysinit/build/$(TETYPE)_$(MACHINE)
+
+# ----------------------------------------------------------------------------
+
+# target objects
+TARGET_RAM	= kernel-ram.sys
+TARGET_ROM	= kernel-rom.rom
+TARGET_CRT0	= icrt0.o
+
+S	= ../../smp_src
+
+# common source files
+SRC	+= inittask_main.c
+VPATH	+= $(S)
+HEADER	+= $(S)
+
+# additional source files (cpu-dependent)
+VPATH   += ../../../sysdepend/cpu/$(MACHINE)
+HEADER  += ../../../sysdepend/cpu/$(MACHINE)
+
+# additional source files (device-dependent)
+VPATH   += ../../../sysdepend/device/$(TETYPE)_$(MACHINE)
+HEADER  += ../../../sysdepend/device/$(TETYPE)_$(MACHINE)
+
+# header file path (kernel settings)
+HEADER  += ../../../tkernel/smp_src ../../../tkernel/src
+
+OBJ	= $(addsuffix .o, $(basename $(SRC)))
+
+# T-Kernel modules
+K_OBJ	+=	$(OBJ_TKERNEL_PATH)/tkernel.o \
+		$(OBJ_SYSMGR_PATH)/sysmgr.o \
+		$(OBJ_SYSINIT_PATH)/sysinit.o
+
+# gcc standard library
+STDLIB = -lgcc
+
+# additional library
+LDSYSLIBS += -ltk -ltm -lsvc -lsplock -latomic
+LDLIBS += $(LDSYSLIBS) $(LDUSRLIBS) $(LDSYSLIBS)
+
+# linker options
+LDFLAGS += -static -nostdlib -T $(LINKSCRIPT)
+
+LINKSCRIPT = kernel-ram$(_GCCVER).lnk
+$(TARGET_ROM): LINKSCRIPT = kernel-rom$(_GCCVER).lnk
+
+# compiler options
+CFLAGS += $(CFLAGS_WARNING)
+CPPFLAGS += -DTKERNEL_ONLY
+
+# ----------------------------------------------------------------------------
+
+.PHONY: all clean install
+
+ALL  = $(TARGET_RAM) $(TARGET_RAM:%.sys=%.map) $(TARGET_RAM:%.sys=%.mot)
+ALL += $(TARGET_ROM) $(TARGET_ROM:%.rom=%.map) $(TARGET_ROM:%.rom=%.mot)
+
+all: tkernel sysmgr sysinit $(ALL) $(TARGET_CRT0)
+
+# objects for disk loading (RAM)
+$(TARGET_RAM): $(TARGET_CRT0) $(OBJ) $(K_OBJ) $(I_OBJ)
+	$(CC) $(TARGET_ARCH) $(LDFLAGS) $^ $(LDLIBS) $(STDLIB) $(OUTPUT_OPTION)
+
+$(TARGET_RAM:%.sys=%.map): $(TARGET_RAM)
+	$(NM) $(NMFLAGS) $< > $@
+
+$(TARGET_RAM:%.sys=%.mot): $(TARGET_RAM)
+	$(OBJCOPY) $(OUTPUT_SREC) $< $@
+
+# objects for ROM
+$(TARGET_ROM): $(TARGET_CRT0) $(OBJ) $(K_OBJ) $(I_OBJ)
+	$(CC) $(TARGET_ARCH) $(LDFLAGS) $^ $(LDLIBS) $(STDLIB) $(OUTPUT_OPTION)
+
+$(TARGET_ROM:%.rom=%.map): $(TARGET_ROM)
+	$(NM) $(NMFLAGS) $< > $@
+
+$(TARGET_ROM:%.rom=%.mot): $(TARGET_ROM)
+	$(OBJCOPY) $(OUTPUT_SREC) $< $@
+
+tkernel:
+	( cd $(OBJ_TKERNEL_PATH) ; make )
+
+sysmgr:
+	( cd $(OBJ_SYSMGR_PATH) ; make )
+
+sysinit:
+	( cd $(OBJ_SYSINIT_PATH) ; make )
+
+clean:
+	( cd $(OBJ_TKERNEL_PATH) ; make clean )
+	( cd $(OBJ_SYSMGR_PATH) ; make clean )
+	( cd $(OBJ_SYSINIT_PATH) ; make clean )
+	$(RM) $(OBJ) $(TARGET_CRT0) $(ALL) $(DEPS)
+
+install: $(addprefix $(EXE_INSTALLDIR)/, $(ALL))
+
+$(addprefix $(EXE_INSTALLDIR)/, $(TARGET)): $(EXE_INSTALLDIR)/%: %
+
+# generate dependencies
+$(DEPS): ; touch $(DEPS)
+include $(DEPS)
