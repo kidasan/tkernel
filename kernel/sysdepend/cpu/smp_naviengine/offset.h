@@ -72,7 +72,7 @@
 /*	offset data in TCB						*/
 /*----------------------------------------------------------------------*/
 #define TCB_isstack	(TCB_wtmeb+TCBsz_wtmeb2istack)
-#define TCB_tskctxb	_ALIGN_CPU(TCB_isstack+4+TCBSZ_GP)
+#define TCB_tskctxb	_ALIGN_CPU(TCB_isstack+4+TCBSZ_GP+4)
 
 #define TCB_tskid	8
 #define TCB_tskatr	16
